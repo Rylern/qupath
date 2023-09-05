@@ -3,8 +3,6 @@ plugins {
   id 'qupath.publishing-conventions'
   id 'java-library'
 
-//  id "io.freefair.lombok" version "8.0.1"
-
   alias(libs.plugins.javafx)
 }
 
@@ -19,11 +17,12 @@ configurations {
 dependencies {
   api project(':qupath-core')
   api project(':qupath-core-processing')
-  api project(':qupath-fx')
 
+  implementation libs.qupath.fxtras // API for no
   api libs.controlsfx
-  
+
   implementation libs.snakeyaml
+  implementation libs.picocli
   
   implementation libs.jfxtras
   implementation libs.commons.text
@@ -32,6 +31,8 @@ dependencies {
   implementation libs.bundles.ikonli
   
   implementation libs.bundles.markdown
+
+  implementation libs.bundles.logviewer
 }
 
 javafx {
@@ -44,4 +45,22 @@ javafx {
 	           "javafx.web",
 	           "javafx.swing"]
 	configuration = 'api'
+}
+
+/**
+ * Export all icons from the icon factory (useful for documentation).
+ */
+task exportDocs(type: JavaExec) {
+    description "Export icons and command descriptions for documentation"
+    group "QuPath"
+
+    dependsOn('compileJava')
+    def docsDir = rootProject.layout.getBuildDirectory().dir('qupath-docs').get().getAsFile()
+    doFirst {
+        println "Making docs dir in ${docsDir.getAbsolutePath()}"
+        docsDir.mkdirs()
+    }
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'qupath.lib.gui.tools.DocGenerator'
+    args docsDir.getAbsolutePath(), "--all"
 }

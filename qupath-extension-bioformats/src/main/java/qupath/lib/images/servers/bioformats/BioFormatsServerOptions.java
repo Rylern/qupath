@@ -128,7 +128,7 @@ public class BioFormatsServerOptions {
 	
 	private BioFormatsServerOptions() {}
 	
-	int getMaxReaders() {
+	public int getMaxReaders() {
 		if (maxReaders <= 0) {
 			maxReaders = Math.min(Math.max(2, Runtime.getRuntime().availableProcessors()), 32);
 			logger.info("Setting max Bio-Formats readers to {}", maxReaders);

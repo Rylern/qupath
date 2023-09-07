@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *     It must be {@link #close() closed} once no longer used.
  * </p>
  */
-public class ReaderPool implements AutoCloseable {
+public class ReaderPool<T> implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(ReaderPool.class);
     private final static int MIN_NUMBER_OF_READERS = 2;
@@ -29,9 +29,9 @@ public class ReaderPool implements AutoCloseable {
     private final AtomicInteger numberOfReaderWrappers = new AtomicInteger(0);
     private volatile boolean isClosed = false;
     private final int maxNumberOfReaders;
-    private final ArrayBlockingQueue<ReaderWrapper> availableReaderWrappers;
-    private final Callable<ReaderWrapper> readerWrapperSupplier;
-    private ReaderWrapper dedicatedReaderWrapper;
+    private final ArrayBlockingQueue<ReaderWrapper<T>> availableReaderWrappers;
+    private final Callable<ReaderWrapper<T>> readerWrapperSupplier;
+    private ReaderWrapper<T> dedicatedReaderWrapper;
 
     /**
      * Creates a new pool of readers.
@@ -41,7 +41,7 @@ public class ReaderPool implements AutoCloseable {
      * @param readerWrapperSupplier  the function that supplies {@link ReaderWrapper ReaderWrappers} to this pool.
      *                               The supplied reader wrappers will be automatically closed when this reader pool is closed.
      */
-    public ReaderPool(int maxNumberOfReaders, Callable<ReaderWrapper> readerWrapperSupplier) {
+    public ReaderPool(int maxNumberOfReaders, Callable<ReaderWrapper<T>> readerWrapperSupplier) {
         if (maxNumberOfReaders < MIN_NUMBER_OF_READERS) {
             logger.warn(String.format(
                     "The specified maximum number of readers (%d) is less than %d. Setting it to %d.",
@@ -57,6 +57,7 @@ public class ReaderPool implements AutoCloseable {
 
     @Override
     public void close() {
+        logger.debug("Closing reader pool");
         isClosed = true;
 
         for (var cleanable : cleanables) {
@@ -83,7 +84,7 @@ public class ReaderPool implements AutoCloseable {
      * @throws IOException when the creation of the reader wrapper fails
      * @throws InterruptedException when the wait for a reader wrapper is interrupted
      */
-    public ReaderWrapper getDedicatedReaderWrapper() throws IOException, InterruptedException {
+    public ReaderWrapper<T> getDedicatedReaderWrapper() throws IOException, InterruptedException {
         if (dedicatedReaderWrapper == null) {
             dedicatedReaderWrapper = getNextReaderWrapper();
         }
@@ -94,23 +95,33 @@ public class ReaderPool implements AutoCloseable {
      * Reads a tile of the image.
      *
      * @param tileRequest  the parameters defining the tile
-     * @param series  some images contain multiple image stacks or experiments within one file.
-     *                The one to use is defined by this parameter
-     * @param numberOfChannels  the number of channels of this image
+     * @param channels  the channels of this image to retrieve. For now, this function only supports
+     *                  retrieving all channels and will throw an UnsupportedOperationException
+     *                  if not all channels are provided
      * @param colorModel  the color model to use with this image
+     * @param series  some images contain multiple image stacks or experiments within one file.
+     *                The one to use is defined by this parameter. This parameter is ignored
+     *                if the reader only supports one image
      * @return the image corresponding to these parameters
      * @throws IllegalArgumentException when the tile dimensions are negative
      * @throws IllegalStateException when no reader is available
+     * @throws UnsupportedOperationException when not all channels are requested
      * @throws IOException when a reading error occurs
      */
-    public BufferedImage openImage(TileRequest tileRequest, int series, int numberOfChannels, boolean isRGB, ColorModel colorModel) throws IOException {
+    public T openImage(TileRequest tileRequest, int[] channels, boolean isRGB, ColorModel colorModel, int series) throws IOException {
         if (tileRequest.getTileWidth() <= 0 || tileRequest.getTileHeight() <= 0) {
             throw new IllegalArgumentException("Unable to request pixels for region with down sampled size " + tileRequest.getTileWidth() + " x " + tileRequest.getTileHeight());
         }
 
+        for (int i=0; i<channels.length; ++i) {
+            if (i != channels[i]) {
+                throw new UnsupportedOperationException("You must request all channels");
+            }
+        }
+
         try {
-            ReaderWrapper readerWrapper = getNextReaderWrapper();
-            BufferedImage image = readerWrapper.getImage(tileRequest, series, numberOfChannels, isRGB, colorModel);
+            ReaderWrapper<T> readerWrapper = getNextReaderWrapper();
+            T image = readerWrapper.getImage(tileRequest, channels, isRGB, colorModel, series);
             availableReaderWrappers.add(readerWrapper);
 
             return image;
@@ -129,10 +140,10 @@ public class ReaderPool implements AutoCloseable {
      * @throws IllegalStateException when no reader is available
      * @throws IOException when a reading error occurs
      */
-    public BufferedImage openSeries(int series) throws IOException {
+    public T openSeries(int series) throws IOException {
         try {
             var readerWrapper = getNextReaderWrapper();
-            BufferedImage image = readerWrapper.getImage(series);
+            T image = readerWrapper.getImage(series);
             availableReaderWrappers.add(readerWrapper);
 
             return image;
@@ -153,16 +164,23 @@ public class ReaderPool implements AutoCloseable {
      * @throws IOException when the creation of the reader wrapper fails
      * @throws InterruptedException when the wait for a reader wrapper is interrupted
      */
-    private ReaderWrapper getNextReaderWrapper() throws IOException, InterruptedException {
+    private ReaderWrapper<T> getNextReaderWrapper() throws IOException, InterruptedException {
         if (isClosed) {
             throw new IllegalStateException("Reader pool is closed");
         } else {
             var nextReader = availableReaderWrappers.poll();
             if (nextReader == null) {
+                logger.debug("No reader available");
+
                 var newReader = addReaderWrapper();
                 if (newReader.isPresent()) {
                     return newReader.get();
                 } else {
+                    logger.debug(
+                            "No reader available and the maximum number of readers has already been created." +
+                            "Waiting for an existing reader to become available."
+                    );
+
                     var reader = availableReaderWrappers.poll(READER_AVAILABILITY_WAITING_TIME, READER_AVAILABILITY_WAITING_TIME_UNIT);
                     if (reader == null) {
                         throw new IllegalStateException(
@@ -186,12 +204,12 @@ public class ReaderPool implements AutoCloseable {
      * @throws IllegalStateException when the reader pool is already closed
      * @throws IOException when the creation of the reader wrapper fails
      */
-    private synchronized Optional<ReaderWrapper> addReaderWrapper() throws IOException {
+    private synchronized Optional<ReaderWrapper<T>> addReaderWrapper() throws IOException {
         if (isClosed) {
             throw new IllegalStateException("Reader pool is closed");
         } else {
             if (numberOfReaderWrappers.get() < maxNumberOfReaders) {
-                ReaderWrapper readerWrapper;
+                ReaderWrapper<T> readerWrapper;
                 try {
                     readerWrapper = readerWrapperSupplier.call();
                 } catch (Exception e) {

@@ -11,20 +11,21 @@ import java.io.IOException;
  * </p>
  * <p>A reader must be {@link #close() closed} once no longer used.</p>
  */
-public interface ReaderWrapper extends AutoCloseable {
+public interface ReaderWrapper<T> extends AutoCloseable {
 
     /**
      * Reads a tile from the image.
      *
      * @param tileRequest  the parameters defining the tile
-     * @param series  some images contain multiple image stacks or experiments within one file.
-     *                The one to use is defined by this parameter
-     * @param numberOfChannels  the number of channels of this image
+     * @param channels  the channels of this image to retrieve
      * @param colorModel  the color model to use with this image
+     * @param series  some images contain multiple image stacks or experiments within one file.
+     *                The one to use is defined by this parameter. This parameter is ignored
+     *                if the reader only supports one image
      * @return the image corresponding to these parameters
      * @throws IOException when a reading error occurs
      */
-    BufferedImage getImage(TileRequest tileRequest, int series, int numberOfChannels, boolean isRGB, ColorModel colorModel) throws IOException;
+    T getImage(TileRequest tileRequest, int[] channels, boolean isRGB, ColorModel colorModel, int series) throws IOException;
 
     /**
      * Returns an 'associated image', e.g. a thumbnail or a slide overview images.
@@ -35,5 +36,5 @@ public interface ReaderWrapper extends AutoCloseable {
      * @return the image corresponding to this parameter
      * @throws IOException when a reading error occurs
      */
-    BufferedImage getImage(int series) throws IOException;
+    T getImage(int series) throws IOException;
 }

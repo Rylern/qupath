@@ -127,7 +127,10 @@ public class BioFormatsServerOptions {
 //	private boolean requestChannelZCorrectionVSI = false;
 	
 	private BioFormatsServerOptions() {}
-	
+
+	/**
+	 * @return the maximal number of readers that can be created to read the image
+	 */
 	public int getMaxReaders() {
 		if (maxReaders <= 0) {
 			maxReaders = Math.min(Math.max(2, Runtime.getRuntime().availableProcessors()), 32);
@@ -135,8 +138,12 @@ public class BioFormatsServerOptions {
 		}
 		return requestParallelization ? maxReaders : 1;
 	}
-	
-	void setMaxReaders(int maxReaders) {
+
+	/**
+	 * Set the maximal number of readers that can be created to read the image
+	 * @param maxReaders  the new maximal number of readers
+	 */
+	public void setMaxReaders(int maxReaders) {
 		this.maxReaders = maxReaders;
 	}
 	

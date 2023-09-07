@@ -18,19 +18,13 @@ import java.util.Optional;
  *     Wrapper suited for readers that return arrays of bytes when reading pixel values.
  * </p>
  */
-public abstract class OMEReaderWrapper implements ReaderWrapper {
+public abstract class OMEReaderWrapper implements ReaderWrapper<BufferedImage> {
 
     @Override
-    public BufferedImage getImage(TileRequest tileRequest, int series, int numberOfChannels, boolean isRGB, ColorModel colorModel) throws IOException {
-        if (tileRequest.getTileWidth() <= 0 || tileRequest.getTileHeight() <= 0) {
-            throw new IllegalArgumentException(
-                    "Unable to request pixels for region with down sampled size " + tileRequest.getTileWidth() + " x " + tileRequest.getTileHeight()
-            );
-        }
-
+    public BufferedImage getImage(TileRequest tileRequest, int[] channels, boolean isRGB, ColorModel colorModel, int series) throws IOException {
         byte[][] pixelValues = getPixelValues(tileRequest, series);
 
-        if ((isRGB() && isRGB) || numberOfChannels == 1) {
+        if ((isRGB() && isRGB) || channels.length == 1) {
             return openImage(pixelValues[0], tileRequest.getTileWidth(), tileRequest.getTileHeight(), isInterleaved());
         } else {
             DataBuffer dataBuffer = bytesToDataBuffer(
@@ -43,7 +37,7 @@ public abstract class OMEReaderWrapper implements ReaderWrapper {
                     createSampleModel(
                             tileRequest,
                             dataBuffer,
-                            numberOfChannels,
+                            channels.length,
                             series
                     ),
                     dataBuffer,
@@ -56,13 +50,13 @@ public abstract class OMEReaderWrapper implements ReaderWrapper {
 
     @Override
     public BufferedImage getImage(int series) throws IOException {
-        ImageData imageData = getPixelValues(series);
+        ImageInfo imageInfo = getPixelValues(series);
 
         return openImage(
-                imageData.data(),
-                imageData.width(),
-                imageData.height(),
-                imageData.isInterleaved()
+                imageInfo.data(),
+                imageInfo.width(),
+                imageInfo.height(),
+                imageInfo.isInterleaved()
         );
     }
 
@@ -93,7 +87,7 @@ public abstract class OMEReaderWrapper implements ReaderWrapper {
      * @return the pixel values corresponding to this parameter
      * @throws IOException when a reading error occurs
      */
-    protected abstract ImageData getPixelValues(int series) throws IOException;
+    protected abstract ImageInfo getPixelValues(int series) throws IOException;
 
     /**
      * @return the byte order of the arrays returned by {@link #getPixelValues(TileRequest, int)}
@@ -294,6 +288,7 @@ public abstract class OMEReaderWrapper implements ReaderWrapper {
                     ind++;
                 }
             }
+
             // TODO: Check this! It works for the only test image I have... (2 channels with 3 samples each)
             // I would guess it fails if pixelStride does not equal nSamples, and if nSamples is different for different 'channels' -
             // but I don't know if this occurs in practice.

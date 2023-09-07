@@ -32,6 +32,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 import javax.imageio.ImageIO;
 
@@ -137,7 +138,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 	/**
 	 * Pool of readers for use with this server.
 	 */
-	private final ReaderPool readerPool;
+	private final ReaderPool<BufferedImage> readerPool;
 
 	/**
 	 * ColorModel to use with all BufferedImage requests.
@@ -206,7 +207,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 		BioFormatsArgs bfArgs = BioFormatsArgs.parse(args);
 
 		var metadata = (OMEPyramidStore) MetadataTools.createOMEXMLMetadata();
-		readerPool = new ReaderPool(
+		readerPool = new ReaderPool<>(
 				Math.max(1, options == null ? Runtime.getRuntime().availableProcessors() : options.getMaxReaders()),
 				() -> {
 					logger.debug("Creating Bio-Formats reader wrapper");
@@ -379,7 +380,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 			int nInstruments = meta.getInstrumentCount();
 			for (int i = 0; i < nInstruments; i++) {
 				int nObjectives = meta.getObjectiveCount(i);
-				for (int o = 0; 0 < nObjectives; o++) {
+				for (int o = 0; o < nObjectives; o++) {
 					if (objectiveID.equals(meta.getObjectiveID(i, o))) {
 						instrumentIndex = i;
 						objectiveIndex = o;
@@ -820,7 +821,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 
 	@Override
 	public BufferedImage readTile(TileRequest tileRequest) throws IOException {
-		return readerPool.openImage(tileRequest, series, nChannels(), isRGB(), colorModel);
+		return readerPool.openImage(tileRequest, IntStream.range(0, nChannels()).toArray(), isRGB(), colorModel, series);
 	}
 
 	@Override

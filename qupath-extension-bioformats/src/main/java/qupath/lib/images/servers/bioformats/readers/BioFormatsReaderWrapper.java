@@ -262,7 +262,7 @@ public class BioFormatsReaderWrapper extends OMEReaderWrapper {
     }
 
     @Override
-    public ImageData getPixelValues(int series) throws IOException {
+    public ImageInfo getPixelValues(int series) throws IOException {
         int previousSeries = reader.getSeries();
 
         try {
@@ -273,7 +273,7 @@ public class BioFormatsReaderWrapper extends OMEReaderWrapper {
             }
 
             //TODO: Handle color transforms here, or in the display of labels/macro images - in case this isn't RGB
-            return new ImageData(
+            return new ImageInfo(
                     reader.openBytes(reader.getIndex(0, 0, 0)),
                     reader.getSizeX(),
                     reader.getSizeY(),

@@ -8,4 +8,4 @@ package qupath.lib.images.servers.bioformats.readers;
  * @param height  the height of the image
  * @param isInterleaved  whether pixels are interleaved
  */
-public record ImageData (byte[] data, int width, int height, boolean isInterleaved) {}
+public record ImageInfo(byte[] data, int width, int height, boolean isInterleaved) {}

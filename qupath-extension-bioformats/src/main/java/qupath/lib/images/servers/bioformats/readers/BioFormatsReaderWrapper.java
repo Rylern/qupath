@@ -1,4 +1,4 @@
-package qupath.lib.images.servers.bioformats;
+package qupath.lib.images.servers.bioformats.readers;
 
 import loci.formats.*;
 import loci.formats.in.DynamicMetadataOptions;
@@ -9,6 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import qupath.lib.images.servers.PixelType;
 import qupath.lib.images.servers.TileRequest;
+import qupath.lib.images.servers.bioformats.BioFormatsImageServer;
+import qupath.lib.images.servers.bioformats.BioFormatsServerOptions;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,11 +22,12 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * A {@link ReaderWrapper} around a bio-format {@link IFormatReader}.
+ * A {@link OMEReaderWrapper} around a Bio-Formats {@link IFormatReader}.
  * It supports memoization, and it is possible to retrieve its {@link IFormatReader}.
  */
-class BioFormatReaderWrapper implements ReaderWrapper {
-    private static final Logger logger = LoggerFactory.getLogger(BioFormatReaderWrapper.class);
+public class BioFormatsReaderWrapper extends OMEReaderWrapper {
+
+    private static final Logger logger = LoggerFactory.getLogger(BioFormatsReaderWrapper.class);
     /**
      * Define a maximum memoization file size above which parallelization is disabled.
      * This is necessary to avoid creating multiple readers that are too large (e.g. sometimes
@@ -44,7 +47,8 @@ class BioFormatReaderWrapper implements ReaderWrapper {
     private final ByteOrder byteOrder;
     private final PixelType pixelType;
 
-    private BioFormatReaderWrapper(
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    private BioFormatsReaderWrapper(
             BioFormatsImageServer.BioFormatsArgs args,
             OMEPyramidStore metadata,
             ClassList<IFormatReader> classList,
@@ -123,7 +127,11 @@ class BioFormatReaderWrapper implements ReaderWrapper {
                         logger.warn("Problem with memoization file {} ({}), will try to delete it", fileMemo.getName(), e.getLocalizedMessage());
                         fileMemo.delete();
                     }
-                    reader.close();
+                    try {
+                        reader.close();
+                    } catch (IOException ex) {
+                        logger.error("Error when closing reader", e);
+                    }
                     if (swapDimensions != null)
                         reader = DimensionSwapper.makeDimensionSwapper(reader);
                     reader.setId(id);
@@ -171,21 +179,22 @@ class BioFormatReaderWrapper implements ReaderWrapper {
     }
 
     /**
-     * Creates a new bio format reader wrapper.
+     * Creates a new Bio-Formats reader wrapper.
      * This function should be used when creating the first reader of the pool.
      *
      * @param args  optional arguments
      * @param metadata  default metadata store for this reader
      * @param options  options that customize the behavior of the pool (e.g. memoization, max number of reader)
      * @param id  a unique identifier for the image to be opened by this pool of readers
-     * @return a new bio format reader wrapper, or an empty Optional if the creation failed
+     * @return a new Bio-Formats reader wrapper
+     * @throws IOException when the reader creation fails
      */
-    public static Optional<BioFormatReaderWrapper> createFirstReader(
+    public static BioFormatsReaderWrapper createFirstReader(
             BioFormatsImageServer.BioFormatsArgs args,
             OMEPyramidStore metadata,
             BioFormatsServerOptions options,
             String id
-    ) {
+    ) throws IOException {
         return createReader(
                 args,
                 metadata,
@@ -196,7 +205,7 @@ class BioFormatReaderWrapper implements ReaderWrapper {
     }
 
     /**
-     * Creates a new bio format reader wrapper.
+     * Creates a new Bio-Formats reader wrapper.
      * This function should be used when creating another than the first reader of the pool.
      *
      * @param args  optional arguments
@@ -204,31 +213,31 @@ class BioFormatReaderWrapper implements ReaderWrapper {
      * @param classList  specify a list of potential reader classes, to avoid a more lengthy search
      * @param options  options that customize the behavior of the pool (e.g. memoization, max number of reader)
      * @param id  a unique identifier for the image to be opened by this pool of readers
-     * @return a new bio format reader wrapper, or an empty Optional if the creation failed
+     * @return a new Bio-Formats reader wrapper
+     * @throws IOException when the reader creation fails
      */
-    public static Optional<BioFormatReaderWrapper> createReader(
+    public static BioFormatsReaderWrapper createReader(
             BioFormatsImageServer.BioFormatsArgs args,
             OMEPyramidStore metadata,
             ClassList<IFormatReader> classList,
             BioFormatsServerOptions options,
             String id
-    ) {
+    ) throws IOException {
         try {
-            return Optional.of(new BioFormatReaderWrapper(
+            return new BioFormatsReaderWrapper(
                     args,
                     metadata,
                     classList,
                     options,
                     id
-            ));
-        } catch (Exception e) {
-            logger.error("Could not create BioFormatReaderWrapper", e);
-            return Optional.empty();
+            );
+        } catch (FormatException e) {
+            throw new IOException(e);
         }
     }
 
     @Override
-    public synchronized Optional<byte[][]> read(TileRequest tileRequest, int series) {
+    public byte[][] getPixelValues(TileRequest tileRequest, int series) throws IOException {
         reader.setSeries(series);
         reader.setResolution(tileRequest.getLevel());
         int effectiveC = reader.getEffectiveSizeC();
@@ -237,25 +246,23 @@ class BioFormatReaderWrapper implements ReaderWrapper {
 
         try {
             for (int channel = 0; channel < effectiveC; channel++) {
-                int ind = reader.getIndex(tileRequest.getZ(), channel, tileRequest.getT());
                 bytes[channel] = reader.openBytes(
-                        ind,
+                        reader.getIndex(tileRequest.getZ(), channel, tileRequest.getT()),
                         tileRequest.getTileX(),
                         tileRequest.getTileY(),
                         tileRequest.getTileWidth(),
                         tileRequest.getTileHeight()
                 );
             }
-        } catch (IOException | FormatException e) {
-            logger.error("Could not read tile " + tileRequest, e);
-            return Optional.empty();
+        } catch (FormatException e) {
+            throw new IOException(e);
         }
 
-        return Optional.of(bytes);
+        return bytes;
     }
 
     @Override
-    public synchronized Optional<byte[]> read(int series) {
+    public ImageData getPixelValues(int series) throws IOException {
         int previousSeries = reader.getSeries();
 
         try {
@@ -265,24 +272,18 @@ class BioFormatReaderWrapper implements ReaderWrapper {
                 reader.setResolution(0);
             }
 
-            // TODO: Handle color transforms here, or in the display of labels/macro images - in case this isn't RGB
-            return Optional.of(reader.openBytes(reader.getIndex(0, 0, 0)));
-        } catch (Exception e) {
-            logger.error("Error when reading bytes", e);
-            return Optional.empty();
+            //TODO: Handle color transforms here, or in the display of labels/macro images - in case this isn't RGB
+            return new ImageData(
+                    reader.openBytes(reader.getIndex(0, 0, 0)),
+                    reader.getSizeX(),
+                    reader.getSizeY(),
+                    reader.isInterleaved()
+            );
+        } catch (FormatException e) {
+            throw new IOException(e);
         } finally {
             reader.setSeries(previousSeries);
         }
-    }
-
-    @Override
-    public int getSizeX() {
-        return reader.getSizeX();
-    }
-
-    @Override
-    public int getSizeY() {
-        return reader.getSizeY();
     }
 
     @Override
@@ -293,11 +294,6 @@ class BioFormatReaderWrapper implements ReaderWrapper {
     @Override
     public PixelType getPixelType() {
         return pixelType;
-    }
-
-    @Override
-    public boolean isRGB() {
-        return reader.isRGB();
     }
 
     @Override
@@ -313,6 +309,11 @@ class BioFormatReaderWrapper implements ReaderWrapper {
     @Override
     public boolean isIndexed() {
         return reader.isIndexed();
+    }
+
+    @Override
+    public boolean isRGB() {
+        return reader.isRGB();
     }
 
     @Override
@@ -336,22 +337,28 @@ class BioFormatReaderWrapper implements ReaderWrapper {
     }
 
     @Override
-    public byte[][] get8BitLookupTable() {
+    public Optional<byte[][]> get8BitLookupTable() throws IOException {
         try {
-            return reader.get8BitLookupTable();
-        } catch (Exception e) {
-            logger.error("Could not retrieve 8 bit lookup table", e);
-            return null;
+            byte[][] table = reader.get8BitLookupTable();
+            if (table == null) {
+                throw new IllegalStateException("This is not an indexed 8-bit image");
+            }
+            return Optional.of(table);
+        } catch (FormatException e) {
+            throw new IOException(e);
         }
     }
 
     @Override
-    public short[][] get16BitLookupTable() {
+    public Optional<short[][]> get16BitLookupTable() throws IOException {
         try {
-            return reader.get16BitLookupTable();
-        } catch (Exception e) {
-            logger.error("Could not retrieve 16 bit lookup table", e);
-            return null;
+            short[][] table = reader.get16BitLookupTable();
+            if (table == null) {
+                throw new IllegalStateException("This is not an indexed 16-bit image");
+            }
+            return Optional.of(table);
+        } catch (FormatException e) {
+            throw new IOException(e);
         }
     }
 
@@ -361,8 +368,7 @@ class BioFormatReaderWrapper implements ReaderWrapper {
     }
 
     /**
-     * @return the underlying reader used by this wrapper. Use the {@code synchronized}
-     * keyword when using this reader, as it could be used anytime to read pixel values
+     * @return the underlying reader used by this wrapper
      */
     public IFormatReader getReader() {
         return reader;
@@ -389,11 +395,11 @@ class BioFormatReaderWrapper implements ReaderWrapper {
 
     private static File getTempMemoDir() throws IOException {
         if (dirMemoTemp == null) {
-            synchronized (BioFormatReaderPool.class) {
+            synchronized (BioFormatsReaderWrapper.class) {
                 if (dirMemoTemp == null) {
                     Path path = Files.createTempDirectory("qupath-memo-");
                     dirMemoTemp = path.toFile();
-                    Runtime.getRuntime().addShutdownHook(new Thread(BioFormatReaderWrapper::deleteTempMemoFiles));
+                    Runtime.getRuntime().addShutdownHook(new Thread(BioFormatsReaderWrapper::deleteTempMemoFiles));
                     logger.warn("Temp memoization directory created at {}", dirMemoTemp);
                     logger.warn("If you want to avoid this warning, either specify a memoization directory in the preferences or turn off memoization by setting the time to < 0");
                 }

@@ -696,10 +696,12 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 						int timePoint = meta.getPlaneTheT(series, plane).getValue();
 						logger.debug("Checking " + timePoint);
 						if (timePoint != lastTimepoint) {
-							timepoints[count] = meta.getPlaneDeltaT(series, plane).value(UNITS.SECOND).doubleValue();
-							logger.debug(String.format("Timepoint %d: %.3f seconds", count, timepoints[count]));
-							lastTimepoint = timePoint;
-							count++;
+							if (meta.getPlaneDeltaT(series, plane) != null) {
+								timepoints[count] = meta.getPlaneDeltaT(series, plane).value(UNITS.SECOND).doubleValue();
+								logger.debug(String.format("Timepoint %d: %.3f seconds", count, timepoints[count]));
+								lastTimepoint = timePoint;
+								count++;
+							}
 						}
 					}
 					timeUnit = TimeUnit.SECONDS;

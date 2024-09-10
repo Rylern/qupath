@@ -39,6 +39,241 @@ public class TestOMEZarrWriter {
         return directoryToBeDeleted.delete();
     }
 
+    @Test
+    void Check_Error_When_Extension_Incorrect() throws Exception {
+        String extension = ".wrong.extension";
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image" + extension).toString();
+        SampleImageServer sampleImageServer = new SampleImageServer();
+
+        Assertions.assertThrows(
+                IllegalArgumentException.class,
+                () -> new OMEZarrWriter.Builder(sampleImageServer, outputImagePath)
+        );
+
+        sampleImageServer.close();
+        deleteDirectory(path.toFile());
+    }
+
+    @Test
+    void Check_Full_Image_Pixels() throws Exception {
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
+        SampleImageServer sampleImageServer = new SampleImageServer();
+        int level = 0;
+        int z = 2;
+        int t = 1;
+        BufferedImage expectedImage = sampleImageServer.readRegion(
+                sampleImageServer.getDownsampleForResolution(level),
+                0,
+                0,
+                sampleImageServer.getWidth(),
+                sampleImageServer.getHeight(),
+                z,
+                t
+        );
+
+        OMEZarrWriter writer = new OMEZarrWriter.Builder(sampleImageServer, outputImagePath)
+                .build();
+        writer.writeImage();
+
+        BufferedImage image;
+        try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
+            image = server.readRegion(
+                    server.getDownsampleForResolution(level),
+                    0,
+                    0,
+                    server.getWidth(),
+                    server.getHeight(),
+                    z,
+                    t
+            );
+        }
+        assertDoubleBufferedImagesEqual(expectedImage, image);
+
+        writer.close();
+        sampleImageServer.close();
+        deleteDirectory(path.toFile());
+    }
+
+    @Test
+    void Check_Downsampled_Image_Pixels() throws Exception {
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
+        SampleImageServer sampleImageServer = new SampleImageServer();
+        int level = 1;
+        int z = 2;
+        int t = 1;
+        BufferedImage expectedImage = sampleImageServer.readRegion(
+                sampleImageServer.getDownsampleForResolution(level),
+                0,
+                0,
+                sampleImageServer.getWidth(),
+                sampleImageServer.getHeight(),
+                z,
+                t
+        );
+
+        OMEZarrWriter writer = new OMEZarrWriter.Builder(sampleImageServer, outputImagePath)
+                .build();
+        writer.writeImage();
+
+        BufferedImage image;
+        try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
+            image = server.readRegion(
+                    server.getDownsampleForResolution(level),
+                    0,
+                    0,
+                    server.getWidth(),
+                    server.getHeight(),
+                    z,
+                    t
+            );
+        }
+        assertDoubleBufferedImagesEqual(expectedImage, image);
+
+        writer.close();
+        sampleImageServer.close();
+        deleteDirectory(path.toFile());
+    }
+
+    @Test
+    void Check_Downsamples_When_Not_Specified() throws Exception {
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
+        SampleImageServer sampleImageServer = new SampleImageServer();
+        double[] expectedDownsamples = sampleImageServer.getPreferredDownsamples();
+
+        OMEZarrWriter writer = new OMEZarrWriter.Builder(sampleImageServer, outputImagePath)
+                .setDownsamples()
+                .build();
+        writer.writeImage();
+
+        double[] downsamples;
+        try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
+            downsamples = server.getPreferredDownsamples();
+        }
+        Assertions.assertArrayEquals(expectedDownsamples, downsamples);
+
+        writer.close();
+        sampleImageServer.close();
+        deleteDirectory(path.toFile());
+    }
+
+    @Test
+    void Check_Downsamples_When_Specified() throws Exception {
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
+        SampleImageServer sampleImageServer = new SampleImageServer();
+        double[] expectedDownsamples = new double[] {1, 2, 4};
+
+        OMEZarrWriter writer = new OMEZarrWriter.Builder(sampleImageServer, outputImagePath)
+                .setDownsamples(expectedDownsamples)
+                .build();
+        writer.writeImage();
+
+        double[] downsamples;
+        try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
+            downsamples = server.getPreferredDownsamples();
+        }
+        Assertions.assertArrayEquals(expectedDownsamples, downsamples);
+
+        writer.close();
+        sampleImageServer.close();
+        deleteDirectory(path.toFile());
+    }
+
+    @Test
+    void Check_Default_Tile_Width() throws Exception {
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
+        SampleImageServer sampleImageServer = new SampleImageServer();
+        int expectedTileWidth = sampleImageServer.getMetadata().getPreferredTileWidth();
+
+        OMEZarrWriter writer = new OMEZarrWriter.Builder(sampleImageServer, outputImagePath)
+                .setTileWidth(-1)
+                .build();
+        writer.writeImage();
+
+        int tileWidth;
+        try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
+            tileWidth = server.getMetadata().getPreferredTileWidth();
+        }
+        Assertions.assertEquals(expectedTileWidth, tileWidth);
+
+        writer.close();
+        sampleImageServer.close();
+        deleteDirectory(path.toFile());
+    }
+
+    @Test
+    void Check_Custom_Tile_Width() throws Exception {
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
+        SampleImageServer sampleImageServer = new SampleImageServer();
+        int expectedTileWidth = 64;
+
+        OMEZarrWriter writer = new OMEZarrWriter.Builder(sampleImageServer, outputImagePath)
+                .setTileWidth(expectedTileWidth)
+                .build();
+        writer.writeImage();
+
+        int tileWidth;
+        try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
+            tileWidth = server.getMetadata().getPreferredTileWidth();
+        }
+        Assertions.assertEquals(expectedTileWidth, tileWidth);
+
+        writer.close();
+        sampleImageServer.close();
+        deleteDirectory(path.toFile());
+    }
+
+    @Test
+    void Check_Default_Tile_Height() throws Exception {
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
+        SampleImageServer sampleImageServer = new SampleImageServer();
+        int expectedTileHeight = sampleImageServer.getMetadata().getPreferredTileHeight();
+
+        OMEZarrWriter writer = new OMEZarrWriter.Builder(sampleImageServer, outputImagePath)
+                .setTileHeight(-1)
+                .build();
+        writer.writeImage();
+
+        int tileHeight;
+        try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
+            tileHeight = server.getMetadata().getPreferredTileHeight();
+        }
+        Assertions.assertEquals(expectedTileHeight, tileHeight);
+
+        writer.close();
+        sampleImageServer.close();
+        deleteDirectory(path.toFile());
+    }
+
+    @Test
+    void Check_Custom_Tile_Height() throws Exception {
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
+        SampleImageServer sampleImageServer = new SampleImageServer();
+        int expectedTileHeight = 64;
+
+        OMEZarrWriter writer = new OMEZarrWriter.Builder(sampleImageServer, outputImagePath)
+                .setTileHeight(expectedTileHeight)
+                .build();
+        writer.writeImage();
+
+        int tileHeight;
+        try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
+            tileHeight = server.getMetadata().getPreferredTileHeight();
+        }
+        Assertions.assertEquals(expectedTileHeight, tileHeight);
+
+        writer.close();
+        sampleImageServer.close();
+        deleteDirectory(path.toFile());
+    }
 
     @Test
     void Check_Bounding_Box() throws Exception {
@@ -58,6 +293,128 @@ public class TestOMEZarrWriter {
         BufferedImage image;
         try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
             image = server.readRegion(1, 0, 0, server.getWidth(), server.getHeight(), z, t);
+        }
+        assertDoubleBufferedImagesEqual(expectedImage, image);
+
+        writer.close();
+        sampleImageServer.close();
+        deleteDirectory(path.toFile());
+    }
+
+    @Test
+    void Check_Z_Sliced_Image_Number_Of_Z_Stacks() throws Exception {
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
+        SampleImageServer sampleImageServer = new SampleImageServer();
+        int zStart = 1;
+        int zEnd = 3;
+        int expectedNumberOfZStacks = zEnd - zStart;
+
+        OMEZarrWriter writer = new OMEZarrWriter.Builder(sampleImageServer, outputImagePath)
+                .setZSlices(zStart, zEnd)
+                .build();
+        writer.writeImage();
+
+        int numberOfZStacks;
+        try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
+            numberOfZStacks = server.nZSlices();
+        }
+        Assertions.assertEquals(expectedNumberOfZStacks, numberOfZStacks);
+
+        writer.close();
+        sampleImageServer.close();
+        deleteDirectory(path.toFile());
+    }
+
+    @Test
+    void Check_Z_Sliced_Image_Pixels() throws Exception {
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
+        SampleImageServer sampleImageServer = new SampleImageServer();
+        int zStart = 1;
+        int zEnd = 3;
+        int z = 1;
+        int t = 1;
+        BufferedImage expectedImage = sampleImageServer.readRegion(RegionRequest.createInstance(
+                sampleImageServer.getPath(),
+                1,
+                0,
+                0,
+                sampleImageServer.getWidth(),
+                sampleImageServer.getHeight(),
+                z,
+                t
+        ));
+
+        OMEZarrWriter writer = new OMEZarrWriter.Builder(sampleImageServer, outputImagePath)
+                .setZSlices(zStart, zEnd)
+                .build();
+        writer.writeImage();
+
+        BufferedImage image;
+        try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
+            image = server.readRegion(1, 0, 0, server.getWidth(), server.getHeight(), z - zStart, t);
+        }
+        assertDoubleBufferedImagesEqual(expectedImage, image);
+
+        writer.close();
+        sampleImageServer.close();
+        deleteDirectory(path.toFile());
+    }
+
+    @Test
+    void Check_T_Sliced_Image_Number_Of_Timepoints() throws Exception {
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
+        SampleImageServer sampleImageServer = new SampleImageServer();
+        int tStart = 1;
+        int tEnd = 2;
+        int expectedNumberOfTimepoints = tEnd - tStart;
+
+        OMEZarrWriter writer = new OMEZarrWriter.Builder(sampleImageServer, outputImagePath)
+                .setTimepoints(tStart, tEnd)
+                .build();
+        writer.writeImage();
+
+        int numberOfTimepoints;
+        try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
+            numberOfTimepoints = server.nTimepoints();
+        }
+        Assertions.assertEquals(expectedNumberOfTimepoints, numberOfTimepoints);
+
+        writer.close();
+        sampleImageServer.close();
+        deleteDirectory(path.toFile());
+    }
+
+    @Test
+    void Check_T_Sliced_Image_Pixels() throws Exception {
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
+        SampleImageServer sampleImageServer = new SampleImageServer();
+        int tStart = 1;
+        int tEnd = 2;
+        int z = 1;
+        int t = 1;
+        BufferedImage expectedImage = sampleImageServer.readRegion(RegionRequest.createInstance(
+                sampleImageServer.getPath(),
+                1,
+                0,
+                0,
+                sampleImageServer.getWidth(),
+                sampleImageServer.getHeight(),
+                z,
+                t
+        ));
+
+        OMEZarrWriter writer = new OMEZarrWriter.Builder(sampleImageServer, outputImagePath)
+                .setTimepoints(tStart, tEnd)
+                .build();
+        writer.writeImage();
+
+        BufferedImage image;
+        try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
+            image = server.readRegion(1, 0, 0, server.getWidth(), server.getHeight(), z, t - tStart);
         }
         assertDoubleBufferedImagesEqual(expectedImage, image);
 

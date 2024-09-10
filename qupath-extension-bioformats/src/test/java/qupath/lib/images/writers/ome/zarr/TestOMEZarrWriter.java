@@ -18,8 +18,10 @@ import java.awt.image.BufferedImage;
 import java.awt.image.DataBuffer;
 import java.awt.image.DataBufferDouble;
 import java.awt.image.WritableRaster;
+import java.io.File;
 import java.net.URI;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.List;
@@ -27,10 +29,21 @@ import java.util.UUID;
 
 public class TestOMEZarrWriter {
 
+    boolean deleteDirectory(File directoryToBeDeleted) {
+        File[] allContents = directoryToBeDeleted.listFiles();
+        if (allContents != null) {
+            for (File file : allContents) {
+                deleteDirectory(file);
+            }
+        }
+        return directoryToBeDeleted.delete();
+    }
+
     @Test
     void Check_Error_When_Extension_Incorrect() throws Exception {
         String extension = ".wrong.extension";
-        String outputImagePath = Paths.get(Files.createTempDirectory(UUID.randomUUID().toString()).toString(), "image" + extension).toString();
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image" + extension).toString();
         SampleImageServer sampleImageServer = new SampleImageServer();
 
         Assertions.assertThrows(
@@ -39,11 +52,13 @@ public class TestOMEZarrWriter {
         );
 
         sampleImageServer.close();
+        deleteDirectory(path.toFile());
     }
 
     @Test
     void Check_Full_Image_Pixels() throws Exception {
-        String outputImagePath = Paths.get(Files.createTempDirectory(UUID.randomUUID().toString()).toString(), "image.ome.zarr").toString();
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
         SampleImageServer sampleImageServer = new SampleImageServer();
         int level = 0;
         int z = 2;
@@ -78,11 +93,13 @@ public class TestOMEZarrWriter {
 
         writer.close();
         sampleImageServer.close();
+        deleteDirectory(path.toFile());
     }
 
     @Test
     void Check_Downsampled_Image_Pixels() throws Exception {
-        String outputImagePath = Paths.get(Files.createTempDirectory(UUID.randomUUID().toString()).toString(), "image.ome.zarr").toString();
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
         SampleImageServer sampleImageServer = new SampleImageServer();
         int level = 1;
         int z = 2;
@@ -117,11 +134,13 @@ public class TestOMEZarrWriter {
 
         writer.close();
         sampleImageServer.close();
+        deleteDirectory(path.toFile());
     }
 
     @Test
     void Check_Downsamples_When_Not_Specified() throws Exception {
-        String outputImagePath = Paths.get(Files.createTempDirectory(UUID.randomUUID().toString()).toString(), "image.ome.zarr").toString();
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
         SampleImageServer sampleImageServer = new SampleImageServer();
         double[] expectedDownsamples = sampleImageServer.getPreferredDownsamples();
 
@@ -138,11 +157,13 @@ public class TestOMEZarrWriter {
 
         writer.close();
         sampleImageServer.close();
+        deleteDirectory(path.toFile());
     }
 
     @Test
     void Check_Downsamples_When_Specified() throws Exception {
-        String outputImagePath = Paths.get(Files.createTempDirectory(UUID.randomUUID().toString()).toString(), "image.ome.zarr").toString();
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
         SampleImageServer sampleImageServer = new SampleImageServer();
         double[] expectedDownsamples = new double[] {1, 2, 4};
 
@@ -159,11 +180,13 @@ public class TestOMEZarrWriter {
 
         writer.close();
         sampleImageServer.close();
+        deleteDirectory(path.toFile());
     }
 
     @Test
     void Check_Default_Tile_Width() throws Exception {
-        String outputImagePath = Paths.get(Files.createTempDirectory(UUID.randomUUID().toString()).toString(), "image.ome.zarr").toString();
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
         SampleImageServer sampleImageServer = new SampleImageServer();
         int expectedTileWidth = sampleImageServer.getMetadata().getPreferredTileWidth();
 
@@ -180,11 +203,13 @@ public class TestOMEZarrWriter {
 
         writer.close();
         sampleImageServer.close();
+        deleteDirectory(path.toFile());
     }
 
     @Test
     void Check_Custom_Tile_Width() throws Exception {
-        String outputImagePath = Paths.get(Files.createTempDirectory(UUID.randomUUID().toString()).toString(), "image.ome.zarr").toString();
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
         SampleImageServer sampleImageServer = new SampleImageServer();
         int expectedTileWidth = 64;
 
@@ -201,11 +226,13 @@ public class TestOMEZarrWriter {
 
         writer.close();
         sampleImageServer.close();
+        deleteDirectory(path.toFile());
     }
 
     @Test
     void Check_Default_Tile_Height() throws Exception {
-        String outputImagePath = Paths.get(Files.createTempDirectory(UUID.randomUUID().toString()).toString(), "image.ome.zarr").toString();
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
         SampleImageServer sampleImageServer = new SampleImageServer();
         int expectedTileHeight = sampleImageServer.getMetadata().getPreferredTileHeight();
 
@@ -222,11 +249,13 @@ public class TestOMEZarrWriter {
 
         writer.close();
         sampleImageServer.close();
+        deleteDirectory(path.toFile());
     }
 
     @Test
     void Check_Custom_Tile_Height() throws Exception {
-        String outputImagePath = Paths.get(Files.createTempDirectory(UUID.randomUUID().toString()).toString(), "image.ome.zarr").toString();
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
         SampleImageServer sampleImageServer = new SampleImageServer();
         int expectedTileHeight = 64;
 
@@ -243,11 +272,13 @@ public class TestOMEZarrWriter {
 
         writer.close();
         sampleImageServer.close();
+        deleteDirectory(path.toFile());
     }
 
     @Test
     void Check_Bounding_Box() throws Exception {
-        String outputImagePath = Paths.get(Files.createTempDirectory(UUID.randomUUID().toString()).toString(), "image.ome.zarr").toString();
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
         SampleImageServer sampleImageServer = new SampleImageServer();
         int z = 2;
         int t = 1;
@@ -267,11 +298,13 @@ public class TestOMEZarrWriter {
 
         writer.close();
         sampleImageServer.close();
+        deleteDirectory(path.toFile());
     }
 
     @Test
     void Check_Z_Sliced_Image_Number_Of_Z_Stacks() throws Exception {
-        String outputImagePath = Paths.get(Files.createTempDirectory(UUID.randomUUID().toString()).toString(), "image.ome.zarr").toString();
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
         SampleImageServer sampleImageServer = new SampleImageServer();
         int zStart = 1;
         int zEnd = 3;
@@ -290,11 +323,13 @@ public class TestOMEZarrWriter {
 
         writer.close();
         sampleImageServer.close();
+        deleteDirectory(path.toFile());
     }
 
     @Test
     void Check_Z_Sliced_Image_Pixels() throws Exception {
-        String outputImagePath = Paths.get(Files.createTempDirectory(UUID.randomUUID().toString()).toString(), "image.ome.zarr").toString();
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
         SampleImageServer sampleImageServer = new SampleImageServer();
         int zStart = 1;
         int zEnd = 3;
@@ -324,11 +359,13 @@ public class TestOMEZarrWriter {
 
         writer.close();
         sampleImageServer.close();
+        deleteDirectory(path.toFile());
     }
 
     @Test
     void Check_T_Sliced_Image_Number_Of_Timepoints() throws Exception {
-        String outputImagePath = Paths.get(Files.createTempDirectory(UUID.randomUUID().toString()).toString(), "image.ome.zarr").toString();
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
         SampleImageServer sampleImageServer = new SampleImageServer();
         int tStart = 1;
         int tEnd = 2;
@@ -347,11 +384,13 @@ public class TestOMEZarrWriter {
 
         writer.close();
         sampleImageServer.close();
+        deleteDirectory(path.toFile());
     }
 
     @Test
     void Check_T_Sliced_Image_Pixels() throws Exception {
-        String outputImagePath = Paths.get(Files.createTempDirectory(UUID.randomUUID().toString()).toString(), "image.ome.zarr").toString();
+        Path path = Files.createTempDirectory(UUID.randomUUID().toString());
+        String outputImagePath = Paths.get(path.toString(), "image.ome.zarr").toString();
         SampleImageServer sampleImageServer = new SampleImageServer();
         int tStart = 1;
         int tEnd = 2;
@@ -381,6 +420,7 @@ public class TestOMEZarrWriter {
 
         writer.close();
         sampleImageServer.close();
+        deleteDirectory(path.toFile());
     }
 
     private static class SampleImageServer extends AbstractImageServer<BufferedImage> {

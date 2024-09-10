@@ -25,4 +25,8 @@
       uses: gradle/gradle-build-action@v2
       with:
         arguments: :qupath-extension-bioformats:test --tests "qupath.lib.images.writers.ome.zarr.TestOMEZarrWriter" -i
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        path: qupath-extension-bioformats/build/reports/tests/test/index.html
 

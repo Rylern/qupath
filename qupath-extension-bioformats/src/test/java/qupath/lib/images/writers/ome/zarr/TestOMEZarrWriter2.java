@@ -27,7 +27,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
-public class TestOMEZarrWriter {
+public class TestOMEZarrWriter2 {
 
     boolean deleteDirectory(File directoryToBeDeleted) {
         File[] allContents = directoryToBeDeleted.listFiles();

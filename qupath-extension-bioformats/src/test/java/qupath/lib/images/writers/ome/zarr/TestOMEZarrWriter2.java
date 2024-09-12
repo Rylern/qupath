@@ -76,6 +76,7 @@ public class TestOMEZarrWriter2 {
         OMEZarrWriter writer = new OMEZarrWriter.Builder(sampleImageServer, outputImagePath)
                 .build();
         writer.writeImage();
+        writer.close();
 
         BufferedImage image;
         try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
@@ -91,7 +92,6 @@ public class TestOMEZarrWriter2 {
         }
         assertDoubleBufferedImagesEqual(expectedImage, image);
 
-        writer.close();
         sampleImageServer.close();
         deleteDirectory(path.toFile());
     }
@@ -117,6 +117,7 @@ public class TestOMEZarrWriter2 {
         OMEZarrWriter writer = new OMEZarrWriter.Builder(sampleImageServer, outputImagePath)
                 .build();
         writer.writeImage();
+        writer.close();
 
         BufferedImage image;
         try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
@@ -132,7 +133,6 @@ public class TestOMEZarrWriter2 {
         }
         assertDoubleBufferedImagesEqual(expectedImage, image);
 
-        writer.close();
         sampleImageServer.close();
         deleteDirectory(path.toFile());
     }
@@ -148,6 +148,7 @@ public class TestOMEZarrWriter2 {
                 .setDownsamples()
                 .build();
         writer.writeImage();
+        writer.close();
 
         double[] downsamples;
         try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
@@ -155,7 +156,6 @@ public class TestOMEZarrWriter2 {
         }
         Assertions.assertArrayEquals(expectedDownsamples, downsamples);
 
-        writer.close();
         sampleImageServer.close();
         deleteDirectory(path.toFile());
     }
@@ -171,6 +171,7 @@ public class TestOMEZarrWriter2 {
                 .setDownsamples(expectedDownsamples)
                 .build();
         writer.writeImage();
+        writer.close();
 
         double[] downsamples;
         try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
@@ -178,7 +179,6 @@ public class TestOMEZarrWriter2 {
         }
         Assertions.assertArrayEquals(expectedDownsamples, downsamples);
 
-        writer.close();
         sampleImageServer.close();
         deleteDirectory(path.toFile());
     }
@@ -194,6 +194,7 @@ public class TestOMEZarrWriter2 {
                 .setTileWidth(-1)
                 .build();
         writer.writeImage();
+        writer.close();
 
         int tileWidth;
         try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
@@ -201,7 +202,6 @@ public class TestOMEZarrWriter2 {
         }
         Assertions.assertEquals(expectedTileWidth, tileWidth);
 
-        writer.close();
         sampleImageServer.close();
         deleteDirectory(path.toFile());
     }
@@ -217,6 +217,7 @@ public class TestOMEZarrWriter2 {
                 .setTileWidth(expectedTileWidth)
                 .build();
         writer.writeImage();
+        writer.close();
 
         int tileWidth;
         try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
@@ -224,7 +225,6 @@ public class TestOMEZarrWriter2 {
         }
         Assertions.assertEquals(expectedTileWidth, tileWidth);
 
-        writer.close();
         sampleImageServer.close();
         deleteDirectory(path.toFile());
     }
@@ -240,6 +240,7 @@ public class TestOMEZarrWriter2 {
                 .setTileHeight(-1)
                 .build();
         writer.writeImage();
+        writer.close();
 
         int tileHeight;
         try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
@@ -247,7 +248,6 @@ public class TestOMEZarrWriter2 {
         }
         Assertions.assertEquals(expectedTileHeight, tileHeight);
 
-        writer.close();
         sampleImageServer.close();
         deleteDirectory(path.toFile());
     }
@@ -263,6 +263,7 @@ public class TestOMEZarrWriter2 {
                 .setTileHeight(expectedTileHeight)
                 .build();
         writer.writeImage();
+        writer.close();
 
         int tileHeight;
         try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
@@ -270,7 +271,6 @@ public class TestOMEZarrWriter2 {
         }
         Assertions.assertEquals(expectedTileHeight, tileHeight);
 
-        writer.close();
         sampleImageServer.close();
         deleteDirectory(path.toFile());
     }
@@ -289,6 +289,7 @@ public class TestOMEZarrWriter2 {
                 .setBoundingBox(boundingBox)
                 .build();
         writer.writeImage();
+        writer.close();
 
         BufferedImage image;
         try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
@@ -296,7 +297,6 @@ public class TestOMEZarrWriter2 {
         }
         assertDoubleBufferedImagesEqual(expectedImage, image);
 
-        writer.close();
         sampleImageServer.close();
         deleteDirectory(path.toFile());
     }
@@ -314,6 +314,7 @@ public class TestOMEZarrWriter2 {
                 .setZSlices(zStart, zEnd)
                 .build();
         writer.writeImage();
+        writer.close();
 
         int numberOfZStacks;
         try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
@@ -321,7 +322,6 @@ public class TestOMEZarrWriter2 {
         }
         Assertions.assertEquals(expectedNumberOfZStacks, numberOfZStacks);
 
-        writer.close();
         sampleImageServer.close();
         deleteDirectory(path.toFile());
     }
@@ -350,6 +350,7 @@ public class TestOMEZarrWriter2 {
                 .setZSlices(zStart, zEnd)
                 .build();
         writer.writeImage();
+        writer.close();
 
         BufferedImage image;
         try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
@@ -357,7 +358,6 @@ public class TestOMEZarrWriter2 {
         }
         assertDoubleBufferedImagesEqual(expectedImage, image);
 
-        writer.close();
         sampleImageServer.close();
         deleteDirectory(path.toFile());
     }
@@ -375,6 +375,7 @@ public class TestOMEZarrWriter2 {
                 .setTimepoints(tStart, tEnd)
                 .build();
         writer.writeImage();
+        writer.close();
 
         int numberOfTimepoints;
         try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
@@ -382,7 +383,6 @@ public class TestOMEZarrWriter2 {
         }
         Assertions.assertEquals(expectedNumberOfTimepoints, numberOfTimepoints);
 
-        writer.close();
         sampleImageServer.close();
         deleteDirectory(path.toFile());
     }
@@ -411,6 +411,7 @@ public class TestOMEZarrWriter2 {
                 .setTimepoints(tStart, tEnd)
                 .build();
         writer.writeImage();
+        writer.close();
 
         BufferedImage image;
         try (ImageServer<BufferedImage> server = ImageServerProvider.buildServer(outputImagePath, BufferedImage.class)) {
@@ -418,7 +419,6 @@ public class TestOMEZarrWriter2 {
         }
         assertDoubleBufferedImagesEqual(expectedImage, image);
 
-        writer.close();
         sampleImageServer.close();
         deleteDirectory(path.toFile());
     }

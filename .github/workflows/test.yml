@@ -24,7 +24,7 @@
     - name: Build with Gradle
       uses: gradle/gradle-build-action@v2
       with:
-        arguments: :qupath-extension-bioformats:test --tests "qupath.lib.images.writers.ome.zarr.TestOMEZarrWriter" -i
+        arguments: :qupath-extension-bioformats:test --tests "qupath.lib.images.writers.ome.zarr.TestOMEZarrWriter" -d
     - name: Upload artifacts
       if: ${{ failure() }}
       uses: actions/upload-artifact@v4

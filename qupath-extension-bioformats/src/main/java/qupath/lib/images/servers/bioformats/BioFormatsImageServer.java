@@ -4,19 +4,19 @@
  * %%
  * Copyright (C) 2014 - 2016 The Queen's University of Belfast, Northern Ireland
  * Contact: IP Management (ipmanagement@qub.ac.uk)
- * Copyright (C) 2018 - 2023 QuPath developers, The University of Edinburgh
+ * Copyright (C) 2018 - 2024 QuPath developers, The University of Edinburgh
  * %%
  * QuPath is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
- * 
+ *
  * QuPath is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License 
+ *
+ * You should have received a copy of the GNU General Public License
  * along with QuPath.  If not, see <https://www.gnu.org/licenses/>.
  * #L%
  */
@@ -97,26 +97,26 @@ import java.util.stream.IntStream;
  * See http://www.openmicroscopy.org/site/products/bio-formats
  * <p>
  * See also https://docs.openmicroscopy.org/bio-formats/6.5.1/developers/matlab-dev.html#improving-reading-performance
- * 
+ *
  * @author Pete Bankhead
  *
  */
 public class BioFormatsImageServer extends AbstractTileableImageServer {
-	
+
 	private static final Logger logger = LoggerFactory.getLogger(BioFormatsImageServer.class);
-		
+
 	/**
-	 * Define a maximum memoization file size above which parallelization is disabled. 
-	 * This is necessary to avoid creating multiple readers that are too large (e.g. sometimes 
+	 * Define a maximum memoization file size above which parallelization is disabled.
+	 * This is necessary to avoid creating multiple readers that are too large (e.g. sometimes
 	 * a memoization file can be over 1GB...)
 	 */
 	private static long MAX_PARALLELIZATION_MEMO_SIZE = 1024L * 1024L * 16L;
-	
+
 	/**
 	 * The original URI requested for this server.
 	 */
 	private URI uri;
-	
+
 	/**
 	 * Minimum tile size - smaller values will be ignored.
 	 */
@@ -131,111 +131,111 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 //	 * Maximum tile size - larger values will be ignored.
 //	 */
 //	private static int MAX_TILE_SIZE = 4096;
-	
+
 	/**
 	 * Image names (in lower case) normally associated with 'extra' images, but probably not representing the main image in the file.
 	 */
 	private static Collection<String> extraImageNames = new HashSet<>(
 			Arrays.asList("overview", "label", "thumbnail", "macro", "macro image", "macro mask image", "label image", "overview image", "thumbnail image"));
-	
+
 	/**
 	 * Original metadata, populated when reading the file.
 	 */
 	private ImageServerMetadata originalMetadata;
-	
+
 	/**
 	 * Arguments passed to constructor.
 	 */
 	private String[] args;
-	
+
 	/**
 	 * File path if possible, or a URI otherwise.
 	 */
 	private String filePathOrUrl;
-	
+
 	/**
 	 * Fix issue related to VSI images having (wrong) z-slices
 	 */
 //	private boolean doChannelZCorrectionVSI = false;
-	
+
 	/**
 	 * A map linking an identifier (image name) to series number for 'full' images.
 	 */
 	private Map<String, ServerBuilder<BufferedImage>> imageMap = null;
-	
+
 	/**
 	 * A map linking an identifier (image name) to series number for additional images, e.g. thumbnails or macro images.
 	 */
 	private Map<String, Integer> associatedImageMap = null;
-	
+
 	/**
 	 * Numeric identifier for the image (there might be more than one in the file)
 	 */
 	private int series = 0;
-	
+
 	/**
 	 * Format for the current reader.
 	 */
 	private String format;
-	
+
 //	/**
 //	 * QuPath-specific options for how the image server should behave, such as using parallelization or memoization.
 //	 */
 //	private BioFormatsServerOptions options;
-		
+
 //	/**
 //	 * Manager to help keep multithreading under control.
 //	 */
 //	private static BioFormatsReaderManager manager = new BioFormatsReaderManager();
-	
+
 	/**
 	 * ColorModel to use with all BufferedImage requests.
 	 */
 	private ColorModel colorModel;
-	
+
 	/**
 	 * Pool of readers for use with this server.
 	 */
 	private ReaderPool readerPool;
-	
+
 	/**
 	 * Primary metadata store.
 	 */
 //	private OMEPyramidStore meta;
-	
+
 	/**
 	 * Cached path
 	 */
 	private String path;
-	
+
 	/**
 	 * Wrapper to the args passed to the reader, after parsing.
 	 */
 	private BioFormatsArgs bfArgs;
-	
+
 //	/**
 //	 * Try to parallelize multichannel requests (experimental!)
 //	 */
 //	private boolean parallelizeMultichannel = true;
 
-	
+
 	/**
 	 * Create an ImageServer using the Bio-Formats library.
 	 * <p>
 	 * This requires an <i>absolute</i> URI, where an integer fragment can be used to define the series number.
-	 * 
+	 *
 	 * @param uri for the image that should be opened; this might include a sub-image as a query or fragment.
 	 * @param args optional arguments
 	 * @throws FormatException
 	 * @throws IOException
 	 * @throws DependencyException
 	 * @throws ServiceException
-	 * @throws URISyntaxException 
+	 * @throws URISyntaxException
 	 */
 	public BioFormatsImageServer(final URI uri, String...args) throws FormatException, IOException, DependencyException, ServiceException, URISyntaxException {
 		this(uri, BioFormatsServerOptions.getInstance(), args);
 	}
-	
+
 	/**
 	 * Create a minimal BioFormatsImageServer without additional readers, which can be used to query server builders.
 	 * @param uri
@@ -265,25 +265,24 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 			throw ReaderPool.convertToIOException(t);
 		}
 	}
-	
+
 	BioFormatsImageServer(URI uri, final BioFormatsServerOptions options, String...args) throws FormatException, IOException, DependencyException, ServiceException, URISyntaxException {
 		super();
 
 		long startTime = System.currentTimeMillis();
 
 //		this.options = options;
-		
+
 		// Create variables for metadata
 		int width = 0, height = 0, nChannels = 1, nZSlices = 1, nTimepoints = 1, tileWidth = 0, tileHeight = 0;
 		double pixelWidth = Double.NaN, pixelHeight = Double.NaN, zSpacing = Double.NaN, magnification = Double.NaN;
-		TimeUnit timeUnit = null;
 
 		// Zarr images can be opened by selecting the .zattrs or .zgroup file
 		// In that case, the parent directory contains the whole image
 		if (uri.toString().endsWith(".zattrs") || uri.toString().endsWith(".zgroup")) {
 			uri = new File(uri).getParentFile().toURI();
 		}
-		
+
 		// See if there is a series name embedded in the path (temporarily the way things were done in v0.2.0-m1 and v0.2.0-m2)
 		// Add it to the args if so
 		if (args.length == 0) {
@@ -303,21 +302,22 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 			uri = new URI(uri.getScheme(), uri.getHost(), uri.getPath(), null);
 		}
 		this.uri = uri;
-		
+
 		// Parse the arguments
 		bfArgs = BioFormatsArgs.parse(args);
-		
+
 		// Try to parse args, extracting the series if present
 		int seriesIndex = bfArgs.series;
 		String requestedSeriesName = bfArgs.seriesName;
 		if (requestedSeriesName.isBlank())
 			requestedSeriesName = null;
-		
+
 		// Try to get a local file path, but accept something else (since Bio-Formats handles other URIs)
 		try {
 			var path = GeneralTools.toPath(uri);
 			if (path != null) {
-				filePathOrUrl = path.toString();
+				// Use toRealPath to resolve any symbolic links
+				filePathOrUrl = path.toRealPath().toString();
 			}
 		} catch (Exception e) {
 			logger.error(e.getLocalizedMessage(), e);
@@ -353,19 +353,19 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 				String originalImageName = getImageName(meta, s);
 				if (originalImageName == null)
 					originalImageName = "";
-				
+
 				String imageName = originalImageName;
 				try {
 					if (!imageName.isEmpty())
 						name += " (" + imageName + ")";
-					
+
 					// Set this to be the series, if necessary
 					long sizeX = meta.getPixelsSizeX(s).getNumberValue().longValue();
 					long sizeY = meta.getPixelsSizeY(s).getNumberValue().longValue();
 					long sizeC = meta.getPixelsSizeC(s).getNumberValue().longValue();
 					long sizeZ = meta.getPixelsSizeZ(s).getNumberValue().longValue();
 					long sizeT = meta.getPixelsSizeT(s).getNumberValue().longValue();
-					
+
 					// Check the resolutions
 					//						int nResolutions = meta.getResolutionCount(s);
 					//						for (int r = 1; r < nResolutions; r++) {
@@ -403,7 +403,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 							imageMap.put(name, DefaultImageServerBuilder.createInstance(
 									BioFormatsServerBuilder.class, null, uri,
 									bfArgs.backToArgs(s)
-									));
+							));
 						}
 					}
 
@@ -470,7 +470,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 							objectiveIndex = o;
 							break;
 						}
-					}	    		
+					}
 				}
 				if (instrumentIndex < 0) {
 					logger.warn("Cannot find objective for ref {}", objectiveID);
@@ -479,7 +479,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 					if (magnificationObject == null) {
 						logger.warn("Nominal objective magnification missing for {}:{}", instrumentIndex, objectiveIndex);
 					} else
-						magnification = magnificationObject;		    		
+						magnification = magnificationObject;
 				}
 			} catch (Exception e) {
 				logger.debug("Unable to parse magnification: {}", e.getLocalizedMessage());
@@ -542,7 +542,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 				default:
 					throw new IllegalArgumentException("Unsupported pixel type " + reader.getPixelType());
 			}
-			
+
 			// Determine min/max values if we can
 			int bpp = reader.getBitsPerPixel();
 			Number minValue = null;
@@ -555,7 +555,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 					maxValue = (int)(Math.pow(2, bpp) - 1);
 				}
 			}
-			
+
 			boolean isRGB = reader.isRGB() && pixelType == PixelType.UINT8;
 			// Remove alpha channel
 			if (isRGB && nChannels == 4) {
@@ -592,7 +592,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 						}
 					} else {
 						// Handle the harder case, where we have a different number of channels
-						// I've seen this with a polarized light CZI image, with a channel count of 2 
+						// I've seen this with a polarized light CZI image, with a channel count of 2
 						// but in which each of these had 3 samples (resulting in a total of 6 channels)
 						logger.debug("Attempting to parse {} channels with metadata channel count {}", nChannels, metaChannelCount);
 						int ind = 0;
@@ -609,10 +609,10 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 									channelName = "Channel " + (ind + 1);
 								else
 									channelName = baseChannelName.strip() + " " + (sampleInd + 1);
-								
+
 								tempNames.add(channelName);
 								tempColors.add(color);
-								
+
 								ind++;
 							}
 						}
@@ -630,12 +630,12 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 //					tempNames.clear();
 //					tempColors.clear();
 				}
-				
-					
+
+
 				// Now loop through whatever we could parse and add QuPath ImageChannel objects
 				for (int c = 0; c < nChannels; c++) {
 					String channelName = c < tempNames.size() ? tempNames.get(c) : null;
-					var color = c < tempColors.size() ? tempColors.get(c) : null; 
+					var color = c < tempColors.size() ? tempColors.get(c) : null;
 					Integer channelColor = null;
 					if (color != null)
 						channelColor = ColorTools.packARGB(color.getAlpha(), color.getRed(), color.getGreen(), color.getBlue());
@@ -651,12 +651,12 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 					channels.add(ImageChannel.getInstance(channelName, channelColor));
 				}
 				assert nChannels == channels.size();
-				// Update RGB status if needed - sometimes we might really have an RGB image, but the Bio-Formats flag doesn't show this - 
+				// Update RGB status if needed - sometimes we might really have an RGB image, but the Bio-Formats flag doesn't show this -
 				// and we want to take advantage of the optimizations where we can
-				if (nChannels == 3 && 
+				if (nChannels == 3 &&
 						pixelType == PixelType.UINT8 &&
 						channels.equals(ImageChannel.getDefaultRGBChannels())
-						) {
+				) {
 					isRGB = true;
 					colorModel = ColorModel.getRGBdefault();
 				} else {
@@ -665,7 +665,8 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 			}
 
 			// Try parsing pixel sizes in micrometers
-			double[] timepoints;
+			double[] timepoints = null;
+			TimeUnit timeUnit = null;
 			try {
 				Length xSize = meta.getPixelsPhysicalSizeX(series);
 				Length ySize = meta.getPixelsPhysicalSizeY(series);
@@ -674,7 +675,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 					pixelHeight = ySize.value(UNITS.MICROMETER).doubleValue();
 				} else {
 					pixelWidth = Double.NaN;
-					pixelHeight = Double.NaN;			    		
+					pixelHeight = Double.NaN;
 				}
 				// If we have multiple z-slices, parse the spacing
 				if (nZSlices > 1) {
@@ -686,27 +687,16 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 				}
 				// TODO: Check the Bioformats TimeStamps
 				if (nTimepoints > 1) {
-					logger.warn("Time stamps read from Bioformats have not been fully verified & should not be relied upon");
-					// Here, we don't try to separate timings by z-slice & channel...
-					int lastTimepoint = -1;
-					int count = 0;
-					timepoints = new double[nTimepoints];
-					logger.debug("Plane count: " + meta.getPlaneCount(series));
-					for (int plane = 0; plane < meta.getPlaneCount(series); plane++) {
-						int timePoint = meta.getPlaneTheT(series, plane).getValue();
-						logger.debug("Checking " + timePoint);
-						if (timePoint != lastTimepoint) {
-							if (meta.getPlaneDeltaT(series, plane) != null) {
-								timepoints[count] = meta.getPlaneDeltaT(series, plane).value(UNITS.SECOND).doubleValue();
-								logger.debug(String.format("Timepoint %d: %.3f seconds", count, timepoints[count]));
-								lastTimepoint = timePoint;
-								count++;
-							}
+					logger.warn("Time stamps read from Bioformats have not been fully verified & should not be relied upon (values updated in v0.6.0)");
+					var timeIncrement = meta.getPixelsTimeIncrement(series);
+					if (timeIncrement != null) {
+						timepoints = new double[nTimepoints];
+						double timeIncrementSeconds = timeIncrement.value(UNITS.SECOND).doubleValue();
+						for (int t = 0; t < nTimepoints; t++) {
+							timepoints[t] = t * timeIncrementSeconds;
 						}
+						timeUnit = TimeUnit.SECONDS;
 					}
-					timeUnit = TimeUnit.SECONDS;
-				} else {
-					timepoints = new double[0];
 				}
 			} catch (Exception e) {
 				logger.error("Error parsing metadata", e);
@@ -732,7 +722,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 						logger.warn("Invalid resolution size {} x {}! Will skip this level, but something seems wrong...", w, h);
 						continue;
 					}
-					// In some VSI images, the calculated downsamples for width & height can be wildly discordant, 
+					// In some VSI images, the calculated downsamples for width & height can be wildly discordant,
 					// and we are better off using defaults
 					if ("CellSens VSI".equals(format)) {
 						double downsampleX = (double)width / w;
@@ -746,11 +736,11 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 					}
 					resolutionBuilder.addLevel(w, h);
 				} catch (Exception e) {
-					logger.warn("Error attempting to extract resolution " + i + " for " + getImageName(meta, series), e);					
+					logger.warn("Error attempting to extract resolution " + i + " for " + getImageName(meta, series), e);
 					break;
 				}
 			}
-			
+
 			// Generate a suitable name for this image
 			String imageName = getFile().getName();
 			String shortName = getImageName(meta, seriesIndex);
@@ -761,7 +751,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 				imageName = imageName + " - " + shortName;
 
 			this.args = args;
-			
+
 			// Build resolutions
 			var resolutions = resolutionBuilder.build();
 			// Unused code to check if resolutions seem to be correct
@@ -781,13 +771,13 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 //				}
 //				r++;
 //			}
-			
+
 			// Set metadata
 			path = createID();
 			ImageServerMetadata.Builder builder = new ImageServerMetadata.Builder(
 					getClass(), path, width, height).
 //					args(args).
-					minValue(minValue).
+		minValue(minValue).
 					maxValue(maxValue).
 					name(imageName).
 					channels(channels).
@@ -800,7 +790,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 			if (Double.isFinite(magnification))
 				builder = builder.magnification(magnification);
 
-			if (timeUnit != null)
+			if (timeUnit != null && timepoints != null)
 				builder = builder.timepoints(timeUnit, timepoints);
 
 			if (Double.isFinite(pixelWidth + pixelHeight))
@@ -825,8 +815,8 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 		long endTime = System.currentTimeMillis();
 		logger.debug(String.format("Initialization time: %d ms", endTime-startTime));
 	}
-	
-	
+
+
 	/**
 	 * Get a sensible default tile size for a specified dimension.
 	 * @param tileLength tile width or height
@@ -841,9 +831,9 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 		}
 		return Math.min(tileLength, imageLength);
 	}
-	
-	
-	
+
+
+
 	/**
 	 * Get the image name for a series, making sure to remove any trailing null terminators.
 	 * <p>
@@ -852,14 +842,14 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 	 * @return
 	 */
 	private String getImageName(OMEXMLMetadata meta, int series) {
-		 String name = meta.getImageName(series);
-		 if (name == null)
-			 return null;
-		 while (name.endsWith("\0"))
-			 name = name.substring(0, name.length()-1);
-		 return name;
+		String name = meta.getImageName(series);
+		if (name == null)
+			return null;
+		while (name.endsWith("\0"))
+			name = name.substring(0, name.length()-1);
+		return name;
 	}
-	
+
 	/**
 	 * Get the format String, as returned by Bio-Formats {@code IFormatReader.getFormat()}.
 	 * @return
@@ -867,12 +857,12 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 	public String getFormat() {
 		return format;
 	}
-	
+
 	@Override
 	public Collection<URI> getURIs() {
 		return Collections.singletonList(uri);
 	}
-	
+
 	@Override
 	public String createID() {
 		String id = getClass().getSimpleName() + ": " + uri.toString();
@@ -890,12 +880,12 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 			logger.warn("Can't set metadata to use incompatible pyramid levels - reverting to original pyramid levels");
 			super.setMetadata(
 					new ImageServerMetadata.Builder(metadata)
-					.levels(currentMetadata.getLevels())
-					.build()
+							.levels(currentMetadata.getLevels())
+							.build()
 			);
 		}
 	}
-	
+
 	/**
 	 * Returns a builder capable of creating a server like this one.
 	 */
@@ -903,7 +893,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 	protected ServerBuilder<BufferedImage> createServerBuilder() {
 		return DefaultImageServerBuilder.createInstance(BioFormatsServerBuilder.class, getMetadata(), uri, args);
 	}
-	
+
 	int getPreferredTileWidth() {
 		return getMetadata().getPreferredTileWidth();
 	}
@@ -912,11 +902,11 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 		return getMetadata().getPreferredTileHeight();
 	}
 
-	
+
 //	IFormatReader getPrimaryReader() throws DependencyException, ServiceException, FormatException, IOException {
 //		return manager.getPrimaryReader(this, this.filePath);
 //	}
-	
+
 	/**
 	 * Get the series index, as used by Bio-Formats.
 	 * @return
@@ -924,8 +914,8 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 	public int getSeries() {
 		return series;
 	}
-	
-	
+
+
 	@Override
 	public BufferedImage readTile(TileRequest tileRequest) throws IOException {
 		try {
@@ -934,13 +924,13 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 			throw new IOException(e);
 		}
 	}
-	
-	
+
+
 	@Override
 	public String getServerType() {
 		return "Bio-Formats";
 	}
-	
+
 	@Override
 	public synchronized void close() throws Exception {
 		super.close();
@@ -958,10 +948,10 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 	public OMEPyramidStore getMetadataStore() {
 		return readerPool.metadata;
 	}
-	
+
 	/**
 	 * Retrieve a string representation of the metadata OME-XML.
-	 * 
+	 *
 	 * @return
 	 */
 	public String dumpMetadata() {
@@ -974,7 +964,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 		return null;
 	}
 
-	
+
 	@Override
 	public List<String> getAssociatedImageList() {
 		if (associatedImageMap == null || associatedImageMap.isEmpty())
@@ -986,7 +976,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 	public BufferedImage getAssociatedImage(String name) {
 		if (associatedImageMap == null || !associatedImageMap.containsKey(name))
 			throw new IllegalArgumentException("No associated image with name '" + name + "' for " + getPath());
-		
+
 		int series = associatedImageMap.get(name);
 		try {
 			return readerPool.openSeries(series);
@@ -995,11 +985,11 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 			return null;
 		}
 	}
-	
-	
+
+
 	/**
 	 * Get the underlying file.
-	 * 
+	 *
 	 * @return
 	 */
 	public File getFile() {
@@ -1016,14 +1006,14 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 	public ImageServerMetadata getOriginalMetadata() {
 		return originalMetadata;
 	}
-	
+
 	/**
 	 * Get the class name of the first reader that potentially supports the file type, or null if no reader can be found.
 	 * <p>
 	 * This method only uses the path and file extensions, generously returning the first potential 
 	 * reader based on the extension. Its purpose is to help filter out hopeless cases, not to establish 
 	 * the 'correct' reader.
-	 * 
+	 *
 	 * @param path
 	 * @return
 	 * @throws InstantiationException
@@ -1046,15 +1036,15 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 		}
 		return null;
 	}
-	
-	
-	
+
+
+
 	/**
 	 * Helper class that manages a pool of readers.
 	 * The purpose is to allow multiple threads to take the next available reader, without
 	 */
 	static class ReaderPool implements AutoCloseable {
-		
+
 		private static final Logger logger = LoggerFactory.getLogger(ReaderPool.class);
 
 		private static final int DEFAULT_TIMEOUT_SECONDS = 60;
@@ -1065,21 +1055,21 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 		private static final int MAX_QUEUE_CAPACITY = 128;
 
 		private static ClassList<IFormatReader> defaultClassList;
-		
+
 		private String id;
 		private BioFormatsServerOptions options;
 		private BioFormatsArgs args;
 		private ClassList<IFormatReader> classList;
-		
+
 		private volatile boolean isClosed = false;
-		
+
 		private AtomicInteger totalReaders = new AtomicInteger(0);
 		private List<IFormatReader> additionalReaders = Collections.synchronizedList(new ArrayList<>());
 		private ArrayBlockingQueue<IFormatReader> queue;
-		
+
 		private OMEPyramidStore metadata;
 		private IFormatReader mainReader;
-		
+
 		private ForkJoinTask<?> task;
 		private final List<ImageChannel> channels;
 
@@ -1091,22 +1081,22 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 			this.options = options;
 			this.args = args;
 			this.channels = channels;
-			
+
 			queue = new ArrayBlockingQueue<>(MAX_QUEUE_CAPACITY); // Set a reasonably large capacity (don't want to block when trying to add)
 			metadata = (OMEPyramidStore)MetadataTools.createOMEXMLMetadata();
 
 			timeoutSeconds = getTimeoutSeconds();
-			
+
 			// Create the main reader
 			long startTime = System.currentTimeMillis();
 			mainReader = createReader(options, null, id, metadata, args);
-			
+
 			long endTime = System.currentTimeMillis();
 			logger.debug("Reader {} created in {} ms", mainReader, endTime - startTime);
-			
+
 			// Make the main reader available
 			queue.add(mainReader);
-			
+
 			// Store the class so we don't need to go hunting later
 			classList = unwrapClasslist(mainReader);
 		}
@@ -1157,9 +1147,9 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 		IFormatReader getMainReader() {
 			return mainReader;
 		}
-		
-		private void createAdditionalReader(BioFormatsServerOptions options, final ClassList<IFormatReader> classList, 
-				final String id, BioFormatsArgs args) {
+
+		private void createAdditionalReader(BioFormatsServerOptions options, final ClassList<IFormatReader> classList,
+											final String id, BioFormatsArgs args) {
 			try {
 				if (isClosed)
 					return;
@@ -1175,17 +1165,17 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 				logger.error("Error creating additional readers: " + e.getLocalizedMessage(), e);
 			}
 		}
-		
-		
+
+
 		private int getMaxReaders() {
 			int max = options == null ? Runtime.getRuntime().availableProcessors() : options.getMaxReaders();
 			return Math.min(MAX_QUEUE_CAPACITY, Math.max(1, max));
 		}
-		
+
 
 		/**
 		 * Create a new {@code IFormatReader}, with memoization if necessary.
-		 * 
+		 *
 		 * @param options 	options used to control the reader generation
 		 * @param classList optionally specify a list of potential reader classes, if known (to avoid a more lengthy search)
 		 * @param id 		file path for the image.
@@ -1196,9 +1186,9 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 		 * @throws IOException
 		 */
 		@SuppressWarnings("resource")
-		private IFormatReader createReader(final BioFormatsServerOptions options, final ClassList<IFormatReader> classList, 
-				final String id, final MetadataStore store, BioFormatsArgs args) throws FormatException, IOException {
-			
+		private IFormatReader createReader(final BioFormatsServerOptions options, final ClassList<IFormatReader> classList,
+										   final String id, final MetadataStore store, BioFormatsArgs args) throws FormatException, IOException {
+
 			int maxReaders = getMaxReaders();
 			int nReaders = totalReaders.getAndIncrement();
 			if (mainReader != null && nReaders > maxReaders) {
@@ -1206,7 +1196,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 				totalReaders.decrementAndGet();
 				return null;
 			}
-			
+
 			IFormatReader imageReader;
 			if (new File(id).isDirectory()) {
 				// Using new ImageReader() on a directory won't work
@@ -1220,7 +1210,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 			}
 
 			imageReader.setFlattenedResolutions(false);
-			
+
 			// Try to set any reader options that we have
 			MetadataOptions metadataOptions = imageReader.getMetadataOptions();
 			var readerOptions = args.readerOptions;
@@ -1229,7 +1219,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 					((DynamicMetadataOptions)metadataOptions).set(option.getKey(), option.getValue());
 				}
 			}
-			
+
 			// TODO: Warning! Memoization does not play nicely with options like 
 			// --bfOptions zeissczi.autostitch=false
 			// in a way that options don't have an effect unless QuPath is restarted.
@@ -1269,26 +1259,26 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 					}
 				}
 			}
-			
-			
+
+
 			if (store != null)
 				imageReader.setMetadataStore(store);
 			else {
 				imageReader.setMetadataStore(new DummyMetadata());
 				imageReader.setOriginalMetadataPopulated(false);
 			}
-			
+
 			var swapDimensions = args.getSwapDimensions();
 			if (swapDimensions != null)
 				logger.debug("Creating DimensionSwapper for {}", swapDimensions);
-			
-			
+
+
 			if (id != null) {
 				if (fileMemo != null) {
 					// If we're using a temporary directory, delete the memo file when app closes
 					if (useTempMemoDirectory)
 						tempMemoFiles.add(fileMemo);
-					
+
 					long memoizationFileSize = fileMemo == null ? 0L : fileMemo.length();
 					boolean memoFileExists = fileMemo != null && fileMemo.exists();
 					try {
@@ -1324,23 +1314,23 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 					imageReader.setId(id);
 				}
 			}
-						
+
 			if (swapDimensions != null) {
 				// The series needs to be set before swapping dimensions
 				if (args.series >= 0)
 					imageReader.setSeries(args.series);
 				((DimensionSwapper)imageReader).swapDimensions(swapDimensions);
 			}
-			
-			
+
+
 			cleanables.add(cleaner.register(this,
 					new ReaderCleaner(Integer.toString(cleanables.size()+1), imageReader)));
-			
+
 			return imageReader;
 		}
-		
-				
-		
+
+
+
 		private IFormatReader nextQueuedReader() {
 			var nextReader = queue.poll();
 			if (nextReader != null)
@@ -1348,7 +1338,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 			synchronized (this) {
 				if (!isClosed && (task == null || task.isDone()) && totalReaders.get() < getMaxReaders()) {
 					logger.debug("Requesting reader for {}", id);
-					task = ForkJoinPool.commonPool().submit(() -> createAdditionalReader(options, classList, id, args));				
+					task = ForkJoinPool.commonPool().submit(() -> createAdditionalReader(options, classList, id, args));
 				}
 			}
 			if (isClosed)
@@ -1366,8 +1356,8 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 				return isClosed ? null : mainReader;
 			}
 		}
-		
-		
+
+
 		BufferedImage openImage(TileRequest tileRequest, int series, int nChannels, boolean isRGB, ColorModel colorModel) throws IOException, InterruptedException {
 			int level = tileRequest.getLevel();
 			int tileX = tileRequest.getTileX();
@@ -1376,7 +1366,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 			int tileHeight = tileRequest.getTileHeight();
 			int z = tileRequest.getZ();
 			int t = tileRequest.getT();
-	
+
 			byte[][] bytes = null;
 			int effectiveC;
 			int sizeC = nChannels;
@@ -1387,19 +1377,19 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 			boolean normalizeFloats = false;
 			int[] samplesPerPixel;
 
-			
+
 			IFormatReader ipReader = null;
 			try {
 				ipReader = nextQueuedReader();
 				if (ipReader == null) {
 					throw new IOException("Reader is null - was the image already closed? " + id);
 				}
-	
+
 				// Check if this is non-zero
 				if (tileWidth <= 0 || tileHeight <= 0) {
 					throw new IOException("Unable to request pixels for region with downsampled size " + tileWidth + " x " + tileHeight);
 				}
-		
+
 				synchronized(ipReader) {
 					ipReader.setSeries(series);
 
@@ -1475,7 +1465,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 					.effectiveNChannels(effectiveC)
 					.samplesPerPixel(samplesPerPixel)
 					.build();
-			
+
 			return omePixelParser.parse(bytes, tileWidth, tileHeight, nChannels, colorModel);
 		}
 
@@ -1501,8 +1491,8 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 				return e;
 			return new IOException(t);
 		}
-		
-		
+
+
 		public BufferedImage openSeries(int series) throws InterruptedException, FormatException, IOException {
 			IFormatReader reader = null;
 			try {
@@ -1526,9 +1516,9 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 				queue.put(reader);
 			}
 		}
-		
-		
-		
+
+
+
 		private static ClassList<IFormatReader> unwrapClasslist(IFormatReader reader) {
 			while (reader instanceof ReaderWrapper || reader instanceof ImageReader) {
 				if (reader instanceof ReaderWrapper wrapper)
@@ -1540,9 +1530,9 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 			classlist.addClass(reader.getClass());
 			return classlist;
 		}
-		
-		
-		
+
+
+
 		@Override
 		public void close() throws Exception {
 			logger.debug("Closing ReaderManager");
@@ -1558,7 +1548,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 			}
 		}
 
-		
+
 		private static final Cleaner cleaner = Cleaner.create();
 		private final List<Cleanable> cleanables = new ArrayList<>();
 
@@ -1581,7 +1571,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 
 		/**
 		 * Request the file size of any known memoization file for a specific ID.
-		 * 
+		 *
 		 * @param id
 		 * @return
 		 */
@@ -1686,32 +1676,32 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 
 			@Override
 			public void run() {
-                logger.debug("Cleaner {} called for {} ({})", name, reader, reader.getCurrentFile());
+				logger.debug("Cleaner {} called for {} ({})", name, reader, reader.getCurrentFile());
 				try {
 					this.reader.close(false);
 				} catch (IOException e) {
-                    logger.warn("Error when calling cleaner for {}", name, e);
+					logger.warn("Error when calling cleaner for {}", name, e);
 				}
 			}
 
 		}
-		
-		
+
+
 	}
-	
-	
-	
-	
-	
-	
+
+
+
+
+
+
 	static class BioFormatsArgs {
-		
+
 		@Option(names = {"--series", "-s"}, defaultValue = "-1", description = "Series number (0-based, must be < image count for the file)")
 		int series = -1;
 
 		@Option(names = {"--name", "-n"}, defaultValue = "", description = "Series name (legacy option, please use --series instead)")
 		String seriesName = "";
-		
+
 		@Option(names = {"--dims"}, defaultValue = "", description = "Swap dimensions. "
 				+ "This should be a String of the form XYCZT, ordered according to how the image plans should be interpreted.")
 		String swapDimensions = null;
@@ -1719,15 +1709,15 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 		// Specific options used by some Bio-Formats readers, e.g. Map.of("zeissczi.autostitch", "false")
 		@Option(names = {"--bfOptions"}, description = "Bio-Formats reader options")
 		Map<String, String> readerOptions = new LinkedHashMap<>();
-		
+
 		@Unmatched
 		List<String> unmatched = new ArrayList<>();
-		
+
 		BioFormatsArgs() {}
-		
+
 		/**
 		 * Return to an array of String args.
-		 * @param series 
+		 * @param series
 		 * @return
 		 */
 		String[] backToArgs(int series) {
@@ -1737,10 +1727,10 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 				args.add(Integer.toString(series));
 			} else if (this.series >= 0) {
 				args.add("--series");
-				args.add(Integer.toString(this.series));				
+				args.add(Integer.toString(this.series));
 			} else if (seriesName != null && !seriesName.isBlank()) {
 				args.add("--name");
-				args.add(seriesName);				
+				args.add(seriesName);
 			}
 			if (swapDimensions != null && !swapDimensions.isBlank()) {
 				args.add("--dims");
@@ -1754,11 +1744,11 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 			args.addAll(unmatched);
 			return args.toArray(String[]::new);
 		}
-		
+
 		String getSwapDimensions() {
 			return swapDimensions == null || swapDimensions.isBlank() ? null : swapDimensions.toUpperCase();
 		}
-		
+
 		static BioFormatsArgs parse(String[] args) {
 			var bfArgs = new BioFormatsArgs();
 			new CommandLine(bfArgs).parseArgs(args);
@@ -1810,7 +1800,7 @@ public class BioFormatsImageServer extends AbstractTileableImageServer {
 				return false;
 			return true;
 		}
-		
+
 	}
-	
+
 }
